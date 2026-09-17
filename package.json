@@ -1,0 +1,11 @@
+{
+  "name": "analog-circuit-simulator",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local, browser-based analog circuit editor and DC/transient simulator.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/"
+  }
+}
