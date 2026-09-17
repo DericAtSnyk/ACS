@@ -1,0 +1,230 @@
+:root {
+  color-scheme: light dark;
+  --bg: #12141a;
+  --panel: #181b22;
+  --border: #2a2d36;
+  --fg: #e8e8ea;
+  --muted: #9a9aa5;
+  --accent: #5cc8ff;
+  --danger: #ff6b6b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.app-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.app-header h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.25rem;
+}
+
+.phase-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.phase-note code {
+  color: var(--accent);
+}
+
+.app-layout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+}
+
+.palette {
+  flex: 0 0 150px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.palette-item {
+  padding: 0.5rem 0.75rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: grab;
+  font-size: 0.9rem;
+  user-select: none;
+}
+
+.palette-item:hover {
+  border-color: var(--accent);
+}
+
+.canvas-wrap {
+  flex: 1 1 auto;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.toolbar button {
+  padding: 0.4rem 0.9rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.toolbar button:hover {
+  border-color: var(--accent);
+}
+
+.status {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.status-error {
+  color: var(--danger);
+}
+
+.toolbar button.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.inline-field {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.inline-field input {
+  width: 6rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  border-radius: 4px;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.85rem;
+}
+
+.playback-bar {
+  margin-top: 0.5rem;
+}
+
+.playback-bar input[type='range'] {
+  flex: 1 1 auto;
+  min-width: 120px;
+}
+
+#schematic-canvas {
+  display: block;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: crosshair;
+}
+
+#scope-canvas {
+  display: block;
+  margin-top: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 0.8rem;
+  max-width: 900px;
+}
+
+.hint kbd {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.05rem 0.35rem;
+  font-size: 0.75rem;
+}
+
+.properties {
+  flex: 0 0 220px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.properties h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+}
+
+.props-id {
+  margin: 0 0 0.75rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  word-break: break-all;
+}
+
+.props-empty {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.prop-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.6rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.prop-row input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  border-radius: 4px;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.9rem;
+}
+
+.props-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.props-actions button {
+  flex: 1;
+  padding: 0.4rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.props-actions button.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
