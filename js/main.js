@@ -57,6 +57,13 @@ function setStatus(message, isError = false) {
   statusEl.classList.toggle('status-error', isError);
 }
 
+// Like setStatus, but for messages that embed a bit of markup (e.g. the
+// imported file name shown in bold) rather than plain text.
+function setStatusHtml(html, isError = false) {
+  statusEl.innerHTML = html;
+  statusEl.classList.toggle('status-error', isError);
+}
+
 function invalidateRun() {
   state.runResult = null;
   scrubSlider.max = '0';
@@ -285,7 +292,7 @@ importInput.addEventListener('change', async () => {
     state.selection = null;
     state.pendingWire = null;
     invalidateRun();
-    setStatus('Circuit imported.');
+    setStatusHtml(`Circuit imported: <strong>${file.name}</strong>`);
   } catch (err) {
     setStatus(`Import failed: ${err.message}`, true);
   }
