@@ -54,4 +54,18 @@ export default {
     memory.iPrev = i;
     return i;
   },
+  // Small-signal AC admittance Y = 1/(jwL) = -j/(wL) — no history/companion
+  // model, since AC analysis has no time steps. Unlike the DC stamp, this
+  // has no near-short special case: the sweep's start frequency must be > 0
+  // (enforced by the AC sweep driver) so wL is never zero.
+  stampAc({ G, n, params, omega }) {
+    const [a, bIdx] = n;
+    const y = -1 / (omega * params.inductance);
+    if (a >= 0) G[a][a].im += y;
+    if (bIdx >= 0) G[bIdx][bIdx].im += y;
+    if (a >= 0 && bIdx >= 0) {
+      G[a][bIdx].im -= y;
+      G[bIdx][a].im -= y;
+    }
+  },
 };

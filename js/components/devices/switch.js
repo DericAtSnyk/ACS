@@ -29,4 +29,16 @@ export default {
     const g = 1 / (isClosed(params, t) ? ON_RESISTANCE : OFF_RESISTANCE);
     return (va - vb) * g;
   },
+  // Linearized around the DC operating point, which (like runDC) evaluates
+  // isClosed() at t=0 — so the AC stamp uses that same fixed on/off state.
+  stampAc({ G, n, params }) {
+    const [a, b] = n;
+    const g = 1 / (isClosed(params, 0) ? ON_RESISTANCE : OFF_RESISTANCE);
+    if (a >= 0) G[a][a].re += g;
+    if (b >= 0) G[b][b].re += g;
+    if (a >= 0 && b >= 0) {
+      G[a][b].re -= g;
+      G[b][a].re -= g;
+    }
+  },
 };

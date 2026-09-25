@@ -15,4 +15,7 @@ export default {
   currentAt({ params }) {
     return params.current;
   },
+  // A fixed DC current source has no AC component — it's an ideal open at
+  // signal frequency (mirrors vsource's AC-short assumption).
+  stampAc() {},
 };

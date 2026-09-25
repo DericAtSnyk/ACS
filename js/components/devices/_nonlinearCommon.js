@@ -34,3 +34,14 @@ export function stampVCCS(G, b, [x, y], [c, d], g, ieq) {
   if (x >= 0) b[x] -= ieq;
   if (y >= 0) b[y] += ieq;
 }
+
+// AC (small-signal) counterpart of stampVCCS: no NR offset current (ieq=0 —
+// small-signal analysis has no fixed-point iteration to re-center), and G is
+// complex-valued, but the transconductance g itself is a real number at any
+// given bias point, so only each entry's real part moves.
+export function stampVCCSAc(G, [x, y], [c, d], g) {
+  if (x >= 0 && c >= 0) G[x][c].re += g;
+  if (x >= 0 && d >= 0) G[x][d].re -= g;
+  if (y >= 0 && c >= 0) G[y][c].re -= g;
+  if (y >= 0 && d >= 0) G[y][d].re += g;
+}

@@ -12,7 +12,13 @@
 // Both I_C and I_B are linearized around the current NR guess and stamped as
 // voltage-controlled current sources (one term per controlling voltage, Vbe
 // and Vbc, summed by superposition via two stampVCCS calls each).
-import { THERMAL_VOLTAGE, clampJunctionVoltage, diodeCurrentAndConductance, stampVCCS } from './_nonlinearCommon.js';
+import {
+  THERMAL_VOLTAGE,
+  clampJunctionVoltage,
+  diodeCurrentAndConductance,
+  stampVCCS,
+  stampVCCSAc,
+} from './_nonlinearCommon.js';
 
 export default {
   type: 'bjt_npn',
@@ -62,5 +68,31 @@ export default {
     const iF = diodeCurrentAndConductance(vbe, Is, THERMAL_VOLTAGE).i;
     const iR = diodeCurrentAndConductance(vbc, Is, THERMAL_VOLTAGE).i;
     return iF - (1 + 1 / betaR) * iR;
+  },
+  // Small-signal transconductances at the DC operating point (xDC) — same
+  // gF/gR as the real stamp, but no ieq offset (see diode.js's stampAc).
+  stampAc({ G, n, params, xDC }) {
+    const [nb, nc, ne] = n;
+    const vb = nb >= 0 ? xDC[nb] : 0;
+    const vc = nc >= 0 ? xDC[nc] : 0;
+    const ve = ne >= 0 ? xDC[ne] : 0;
+
+    const Is = params.saturationCurrent ?? 1e-15;
+    const betaF = params.betaF ?? 100;
+    const betaR = params.betaR ?? 1;
+    const vt = THERMAL_VOLTAGE;
+
+    const vbe = clampJunctionVoltage(vb - ve);
+    const vbc = clampJunctionVoltage(vb - vc);
+
+    const { g: gF } = diodeCurrentAndConductance(vbe, Is, vt);
+    const { g: gR } = diodeCurrentAndConductance(vbc, Is, vt);
+    const kR = 1 + 1 / betaR;
+
+    stampVCCSAc(G, [nc, ne], [nb, ne], gF);
+    stampVCCSAc(G, [nc, ne], [nb, nc], -kR * gR);
+
+    stampVCCSAc(G, [nb, ne], [nb, ne], gF / betaF);
+    stampVCCSAc(G, [nb, ne], [nb, nc], gR / betaR);
   },
 };
