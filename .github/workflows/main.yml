@@ -1,0 +1,178 @@
+
+
+
+
+
+Search Snyk Org
+
+
+
+
+
+
+
+
+Snyk Org
+
+
+Find a conversation…
+More unreads
+
+
+
+
+
+
+
+
+Messages
+
+CanvasListFolder
+Markus Weldon
+  1:39 PM
+name: Snyk Security Scan
+
+# Runs Snyk SCA (open source dependencies) and SAST (Snyk Code) scans,
+# fails the build on High or Critical severity issues, and produces
+# SARIF (for GitHub Code Scanning) and HTML reports (as build artifacts).
+#
+# Setup required:
+#   1. In repo Settings > Secrets and variables > Actions, add a secret
+#      named SNYK_TOKEN with your Snyk API token (https://app.snyk.io/account).
+#   2. Adjust the `branches` below to match this repo's workflow.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  security-events: write   # required to upload SARIF to GitHub Code Scanning
+  actions: read
+
+jobs:
+  snyk-security-scan:
+    name: Snyk SAST + SCA
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js (needed to install the Snyk CLI via npm)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Snyk CLI and snyk-to-html
+        run: npm install -g snyk snyk-to-html
+
+      # --- SCA (open source dependency) scan ---
+      - name: Run Snyk Open Source (SCA) test
+        id: snyk_sca
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          set +e
+          snyk test \
+            --all-projects \
+            --severity-threshold=high \
+            --json-file-output=snyk-sca-results.json \
+            --sarif-file-output=snyk-sca.sarif
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          exit 0   # don't fail the step yet; the gate step at the end decides
+
+      # --- SAST (Snyk Code) scan ---
+      - name: Run Snyk Code (SAST) test
+        id: snyk_code
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          set +e
+          snyk code test \
+            --severity-threshold=high \
+            --json-file-output=snyk-code-results.json \
+            --sarif-file-output=snyk-code.sarif
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      # --- HTML reports (snyk-to-html reads the JSON produced above) ---
+      - name: Generate SCA HTML report
+        if: always()
+        run: |
+          if [ -f snyk-sca-results.json ]; then
+            snyk-to-html -i snyk-sca-results.json -o snyk-sca-report.html -a
+          else
+            echo "No SCA JSON output to convert (scan may not have produced results)."
+          fi
+
+      - name: Generate SAST HTML report
+        if: always()
+        run: |
+          if [ -f snyk-code-results.json ]; then
+            snyk-to-html -i snyk-code-results.json -o snyk-code-report.html -a
+          else
+            echo "No SAST JSON output to convert (likely no issues were found)."
+          fi
+
+      # --- Upload SARIF to GitHub Code Scanning (Security tab) ---
+      - name: Upload SCA SARIF
+        if: always() && hashFiles('snyk-sca.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-sca.sarif
+          category: snyk-sca
+
+      - name: Upload SAST SARIF
+        if: always() && hashFiles('snyk-code.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-code.sarif
+          category: snyk-code
+
+      # --- Keep JSON/SARIF/HTML as downloadable build artifacts ---
+      - name: Upload Snyk reports as workflow artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snyk-reports
+          path: |
+            snyk-sca-results.json
+            snyk-code-results.json
+            snyk-sca.sarif
+            snyk-code.sarif
+            snyk-sca-report.html
+            snyk-code-report.html
+          if-no-files-found: warn
+
+      # --- Fail-on logic: High and Critical only (threshold already filters this) ---
+      - name: Enforce fail-on-high-or-above
+        if: always()
+        run: |
+          SCA_EXIT="${{ steps.snyk_sca.outputs.exit_code }}"
+          CODE_EXIT="${{ steps.snyk_code.outputs.exit_code }}"
+          echo "Snyk SCA exit code: $SCA_EXIT"
+          echo "Snyk Code exit code: $CODE_EXIT"
+
+          # Snyk CLI exit codes: 0 = no issues, 1 = issues found, 2/3 = scan error.
+          FAIL=0
+
+          if [ "$SCA_EXIT" = "1" ]; then
+            echo "::error::Snyk Open Source (SCA) found High/Critical severity vulnerabilities."
+            FAIL=1
+          elif [ "$SCA_EXIT" != "0" ]; then
+            echo "::error::Snyk Open Source (SCA) scan failed to run (exit code $SCA_EXIT)."
+            FAIL=1
+          fi
+
+          if [ "$CODE_EXIT" = "1" ]; then
+            echo "::error::Snyk Code (SAST) found High/Critical severity issues."
+            FAIL=1
+          elif [ "$CODE_EXIT" != "0" ]; then
+            echo "::error::Snyk Code (SAST) scan failed to run (exit code $CODE_EXIT)."
+            FAIL=1
+          fi
+
+          exit $FAIL
