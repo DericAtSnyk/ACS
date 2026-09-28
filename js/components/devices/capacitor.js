@@ -48,4 +48,16 @@ export default {
     memory.iPrev = i;
     return i;
   },
+  // Small-signal AC admittance Y = jwC — no history/companion model, since
+  // AC analysis has no time steps.
+  stampAc({ G, n, params, omega }) {
+    const [a, bIdx] = n;
+    const y = omega * params.capacitance;
+    if (a >= 0) G[a][a].im += y;
+    if (bIdx >= 0) G[bIdx][bIdx].im += y;
+    if (a >= 0 && bIdx >= 0) {
+      G[a][bIdx].im -= y;
+      G[bIdx][a].im -= y;
+    }
+  },
 };

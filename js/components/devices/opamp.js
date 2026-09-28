@@ -13,4 +13,13 @@ export default {
     if (minus >= 0) G[k][minus] -= 1;
     if (out >= 0) G[out][k] += 1;
   },
+  // Already exactly linear with no b term, so the AC stamp is identical in
+  // structure — just written into the real part of the complex matrix.
+  stampAc({ G, n, extra }) {
+    const [plus, minus, out] = n;
+    const [k] = extra;
+    if (plus >= 0) G[k][plus].re += 1;
+    if (minus >= 0) G[k][minus].re -= 1;
+    if (out >= 0) G[out][k].re += 1;
+  },
 };

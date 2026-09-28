@@ -38,4 +38,21 @@ export default {
     const v = junctionVoltage(x, n);
     return diodeCurrentAndConductance(v, Is, vt).i;
   },
+  // Small-signal conductance at the DC operating point (xDC) — no ieq offset,
+  // since AC analysis is a linearization around that fixed bias, not a
+  // Newton-Raphson iteration re-centering on a moving guess.
+  stampAc({ G, n, params, xDC }) {
+    const [a, c] = n;
+    const Is = params.saturationCurrent ?? 1e-14;
+    const vt = (params.n ?? 1) * THERMAL_VOLTAGE;
+    const v = junctionVoltage(xDC, n);
+    const { g } = diodeCurrentAndConductance(v, Is, vt);
+
+    if (a >= 0) G[a][a].re += g;
+    if (c >= 0) G[c][c].re += g;
+    if (a >= 0 && c >= 0) {
+      G[a][c].re -= g;
+      G[c][a].re -= g;
+    }
+  },
 };

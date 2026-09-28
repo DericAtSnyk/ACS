@@ -126,6 +126,15 @@ body {
   font-size: 0.85rem;
 }
 
+.inline-field select {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  border-radius: 4px;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.85rem;
+}
+
 .playback-bar {
   margin-top: 0.5rem;
 }
@@ -143,6 +152,13 @@ body {
 }
 
 #scope-canvas {
+  display: block;
+  margin-top: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+#bode-canvas {
   display: block;
   margin-top: 0.75rem;
   border: 1px solid var(--border);

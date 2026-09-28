@@ -44,6 +44,12 @@ npm test
   oscilloscope panel below the schematic once you run a transient.
 - **Save / load a circuit**: **Export JSON** downloads the current
   schematic; **Import JSON** loads one back in.
+- **Run an AC sweep (Bode plot)**: set a start/stop frequency, point count,
+  and log/linear sweep, then click **Run AC**. An **AC Voltage Source**'s
+  Amplitude/Phase fields double as the sweep's stimulus phasor (its
+  Frequency/Offset fields only apply to transient runs); DC sources
+  contribute no AC signal. Voltage probes then show gain (dB) and phase (°)
+  vs. frequency on the Bode plot below the oscilloscope.
 
 ## Component library
 
@@ -70,15 +76,19 @@ npm test
 - A transient run precomputes the **entire** time series up front (rather
   than stepping in real time), which is what lets playback be paused,
   scrubbed, and replayed instantly.
+- An **AC sweep** linearizes the whole circuit around its DC operating point
+  (nonlinear devices are replaced by their small-signal conductance at that
+  bias) and solves the resulting complex-valued MNA system at each frequency
+  in the sweep — the standard SPICE `.AC` approach.
 
 ## Project layout
 
 ```
 index.html, css/style.css     Page shell and styling
-js/core/                      Circuit model, linear algebra, MNA solver, transient driver
+js/core/                      Circuit model, linear algebra, MNA solver, transient driver, AC sweep
 js/components/                Component catalog (UI/symbols) and device stamps (solver math)
 js/editor/                    Canvas rendering, drag-and-drop, wiring, selection, properties panel
-js/sim/                       DC/transient run bridges, playback, probes, oscilloscope, current-flow overlay
+js/sim/                       DC/transient/AC run bridges, playback, probes, oscilloscope, Bode plot, current-flow overlay
 js/io/                        JSON schematic export/import
 test/                         node:test suite verifying solver output against analytical results
 server.js                     Zero-dependency static file server
@@ -86,8 +96,8 @@ server.js                     Zero-dependency static file server
 
 ## Current limitations
 
-- No AC/frequency-domain (Bode plot) analysis — DC and time-domain
-  transient only.
+- AC probes are voltage-only — current phasors (via a device's small-signal
+  admittance/transconductance) aren't computed yet.
 - BJT is NPN-only; no PNP.
 - Device models are simplified for clarity (e.g. no channel-length
   modulation on the MOSFET, no Early effect on the BJT) rather than

@@ -7,7 +7,7 @@
 // Cutoff (Vgs <= Vt):        Id = 0
 // Triode (Vds < Vgs-Vt):     Id = k*((Vgs-Vt)*Vds - Vds^2/2)
 // Saturation (Vds >= Vgs-Vt): Id = (k/2)*(Vgs-Vt)^2
-import { stampVCCS } from './_nonlinearCommon.js';
+import { stampVCCS, stampVCCSAc } from './_nonlinearCommon.js';
 
 function drainCurrentAndSlopes(vgs, vds, vt, k) {
   const vov = vgs - vt;
@@ -47,5 +47,21 @@ export default {
     const vt = params.thresholdVoltage ?? 2;
     const k = params.transconductance ?? 1e-3;
     return drainCurrentAndSlopes(vg - vs, vd - vs, vt, k).id;
+  },
+  // Small-signal gm/gds at the DC operating point (xDC) — same math as the
+  // real stamp's linearization, but no ieq offset (see diode.js's stampAc).
+  stampAc({ G, n, params, xDC }) {
+    const [ng, nd, ns] = n;
+    const vg = ng >= 0 ? xDC[ng] : 0;
+    const vd = nd >= 0 ? xDC[nd] : 0;
+    const vs = ns >= 0 ? xDC[ns] : 0;
+
+    const vt = params.thresholdVoltage ?? 2;
+    const k = params.transconductance ?? 1e-3;
+
+    const { gm, gds } = drainCurrentAndSlopes(vg - vs, vd - vs, vt, k);
+
+    stampVCCSAc(G, [nd, ns], [ng, ns], gm);
+    stampVCCSAc(G, [nd, ns], [nd, ns], gds);
   },
 };

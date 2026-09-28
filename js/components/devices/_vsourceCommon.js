@@ -16,3 +16,23 @@ export function stampVSource(ctx, getVoltage) {
   }
   b[k] += getVoltage(ctx);
 }
+
+// AC counterpart: same branch-current coupling into the (complex) admittance
+// matrix, but the source's phasor value comes from getPhasor(ctx) — a
+// {re, im} complex value — instead of an instantaneous real voltage.
+export function stampVSourceAc(ctx, getPhasor) {
+  const { G, b, n, extra } = ctx;
+  const [p, m] = n;
+  const [k] = extra;
+  if (p >= 0) {
+    G[p][k].re += 1;
+    G[k][p].re += 1;
+  }
+  if (m >= 0) {
+    G[m][k].re -= 1;
+    G[k][m].re -= 1;
+  }
+  const phasor = getPhasor(ctx);
+  b[k].re += phasor.re;
+  b[k].im += phasor.im;
+}

@@ -23,6 +23,8 @@ import { runTransientFromSchematic } from './sim/RunTransient.js';
 import { startPlayback, pausePlayback, stopPlayback, tickPlayback } from './sim/Player.js';
 import { toggleVoltageProbe, toggleCurrentProbe } from './sim/ProbeManager.js';
 import { drawScope } from './sim/Scope.js';
+import { runACFromSchematic } from './sim/RunAC.js';
+import { drawBode } from './sim/Bode.js';
 import { exportSchematicToFile, importSchematicFromFile } from './io/SchematicIO.js';
 
 const ORIGIN_PX = { x: 40, y: 40 };
@@ -45,6 +47,8 @@ const canvas = document.getElementById('schematic-canvas');
 const ctx = canvas.getContext('2d');
 const scopeCanvas = document.getElementById('scope-canvas');
 const scopeCtx = scopeCanvas.getContext('2d');
+const bodeCanvas = document.getElementById('bode-canvas');
+const bodeCtx = bodeCanvas.getContext('2d');
 const paletteEl = document.getElementById('palette');
 const propertiesEl = document.getElementById('properties');
 const statusEl = document.getElementById('status');
@@ -78,6 +82,7 @@ function render() {
   state.probes = state.probes.filter((p) => findComponent(state.schematic, p.componentId));
   drawScene(ctx, canvas, state, catalog, ORIGIN_PX);
   drawScope(scopeCtx, scopeCanvas, state);
+  drawBode(bodeCtx, bodeCanvas, state);
   renderProperties(propertiesEl, state, catalog, () => {
     invalidateRun();
     render();
@@ -244,6 +249,26 @@ document.getElementById('run-transient-btn').addEventListener('click', () => {
     state.scrubIndex = 0;
     state.playing = false;
     setStatus(`Transient solved: ${result.times.length} steps over ${(tStop * 1000).toFixed(3)}ms.`);
+  } catch (err) {
+    state.runResult = null;
+    setStatus(err.message, true);
+  }
+  render();
+});
+
+document.getElementById('run-ac-btn').addEventListener('click', () => {
+  const fStart = parseFloat(document.getElementById('fstart-input').value);
+  const fStop = parseFloat(document.getElementById('fstop-input').value);
+  const points = parseInt(document.getElementById('fpoints-input').value, 10);
+  const sweep = document.getElementById('fsweep-input').value;
+  if (!(fStart > 0) || !(fStop > fStart) || !(points >= 2)) {
+    setStatus('Enter a positive start frequency, a stop frequency above it, and at least 2 points.', true);
+    return;
+  }
+  try {
+    const result = runACFromSchematic(state.schematic, catalog, { fStart, fStop, points, sweep });
+    state.runResult = { kind: 'ac', ...result };
+    setStatus(`AC sweep solved: ${result.freqs.length} point(s) from ${fStart} Hz to ${fStop} Hz.`);
   } catch (err) {
     state.runResult = null;
     setStatus(err.message, true);

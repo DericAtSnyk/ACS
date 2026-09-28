@@ -36,6 +36,19 @@
         <button id="run-transient-btn">Run Transient</button>
       </div>
 
+      <div class="toolbar">
+        <label class="inline-field">Start (Hz)<input id="fstart-input" type="number" value="10" step="any" min="0" /></label>
+        <label class="inline-field">Stop (Hz)<input id="fstop-input" type="number" value="100000" step="any" min="0" /></label>
+        <label class="inline-field">Points<input id="fpoints-input" type="number" value="100" step="1" min="2" /></label>
+        <label class="inline-field">Sweep
+          <select id="fsweep-input">
+            <option value="log" selected>Log</option>
+            <option value="linear">Linear</option>
+          </select>
+        </label>
+        <button id="run-ac-btn">Run AC</button>
+      </div>
+
       <canvas id="schematic-canvas" width="760" height="520"></canvas>
 
       <div class="toolbar playback-bar">
@@ -48,12 +61,17 @@
 
       <canvas id="scope-canvas" width="760" height="180"></canvas>
 
+      <canvas id="bode-canvas" width="760" height="220"></canvas>
+
       <p class="hint">
         Drag parts from the palette onto the grid. Click a terminal (blue dot) to start a wire,
         click another terminal to finish it. Click a component's body to select or drag it.
         With a component selected: <kbd>R</kbd> rotates, <kbd>Delete</kbd> removes it.
         Toggle <strong>Probe</strong>, then click a terminal to watch its voltage or a component
         body to watch its current — traces appear on the scope below once you run a transient.
+        An <strong>AC Voltage Source</strong>'s Amplitude/Phase double as the AC sweep's
+        stimulus (its Frequency/Offset only apply to transient runs) — run an AC sweep to see
+        a probed node's gain/phase vs. frequency on the Bode plot below the scope.
       </p>
     </div>
 
