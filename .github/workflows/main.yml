@@ -1,35 +1,3 @@
-
-
-
-
-
-Search Snyk Org
-
-
-
-
-
-
-
-
-Snyk Org
-
-
-Find a conversation…
-More unreads
-
-
-
-
-
-
-
-
-Messages
-
-CanvasListFolder
-Markus Weldon
-  1:39 PM
 name: Snyk Security Scan
 
 # Runs Snyk SCA (open source dependencies) and SAST (Snyk Code) scans,
