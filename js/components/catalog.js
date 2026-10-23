@@ -5,6 +5,54 @@
 // cases it as a connection to node "0" instead of a device).
 import { GRID_SIZE } from '../editor/Geometry.js';
 
+// Shared symbol for the 4-terminal controlled sources: a diamond with the
+// output pair on the right, control pair on the left, and either a +/- pair
+// (voltage output) or an arrow (current output) inside.
+function drawControlledSource(ctx, kind) {
+  const g = GRID_SIZE;
+  ctx.strokeStyle = '#e8e8ea';
+  ctx.fillStyle = '#e8e8ea';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-g, -g);
+  ctx.lineTo(-0.5 * g, -g);
+  ctx.moveTo(-g, g);
+  ctx.lineTo(-0.5 * g, g);
+  ctx.moveTo(g, -g);
+  ctx.lineTo(0.5 * g, -g);
+  ctx.moveTo(g, g);
+  ctx.lineTo(0.5 * g, g);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(0, -0.8 * g);
+  ctx.lineTo(0.5 * g, 0);
+  ctx.lineTo(0, 0.8 * g);
+  ctx.lineTo(-0.5 * g, 0);
+  ctx.closePath();
+  ctx.stroke();
+  ctx.font = `${0.3 * g}px system-ui`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('+', -0.75 * g, -0.8 * g);
+  ctx.fillText('−', -0.75 * g, 0.8 * g);
+  if (kind === 'vs') {
+    ctx.fillText('+', 0.2 * g, -0.22 * g);
+    ctx.fillText('−', 0.2 * g, 0.22 * g);
+  } else {
+    // Arrow pointing from out+ (top) to out- (bottom).
+    ctx.beginPath();
+    ctx.moveTo(0, -0.3 * g);
+    ctx.lineTo(0, 0.2 * g);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, 0.32 * g);
+    ctx.lineTo(-0.1 * g, 0.12 * g);
+    ctx.lineTo(0.1 * g, 0.12 * g);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
 const RESISTOR_ZIGZAG = [
   [-0.6, 0],
   [-0.45, -0.35],
@@ -371,6 +419,168 @@ export const catalog = {
       ctx.moveTo(-0.2 * g, 0.5 * g);
       ctx.lineTo(0.3 * g, 0.5 * g);
       ctx.lineTo(0.3 * g, 0.7 * g);
+      ctx.stroke();
+    },
+  },
+
+  vsource_pulse: {
+    label: 'Pulse Voltage Source',
+    labelParams: ['v1', 'v2', 'period'],
+    terminals: [
+      { x: -1, y: 0 },
+      { x: 1, y: 0 },
+    ],
+    bodyExtentGrid: { minX: -1, maxX: 1, minY: -0.5, maxY: 0.5 },
+    params: [
+      { key: 'v1', label: 'Low level (V1)', unit: 'V', default: 0, min: -1e6 },
+      { key: 'v2', label: 'High level (V2)', unit: 'V', default: 5, min: -1e6 },
+      { key: 'delay', label: 'Delay', unit: 's', default: 0, min: 0 },
+      { key: 'rise', label: 'Rise time', unit: 's', default: 1e-6, min: 0 },
+      { key: 'fall', label: 'Fall time', unit: 's', default: 1e-6, min: 0 },
+      { key: 'width', label: 'Pulse width', unit: 's', default: 0.5e-3, min: 0 },
+      { key: 'period', label: 'Period', unit: 's', default: 1e-3, min: 1e-9 },
+    ],
+    draw(ctx) {
+      const g = GRID_SIZE;
+      ctx.strokeStyle = '#e8e8ea';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-g, 0);
+      ctx.lineTo(-0.5 * g, 0);
+      ctx.moveTo(0.5 * g, 0);
+      ctx.lineTo(g, 0);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, 0.5 * g, 0, Math.PI * 2);
+      ctx.stroke();
+      // Square-wave glyph.
+      ctx.beginPath();
+      ctx.moveTo(-0.3 * g, 0.18 * g);
+      ctx.lineTo(-0.3 * g, -0.18 * g);
+      ctx.lineTo(0, -0.18 * g);
+      ctx.lineTo(0, 0.18 * g);
+      ctx.lineTo(0.3 * g, 0.18 * g);
+      ctx.lineTo(0.3 * g, -0.18 * g);
+      ctx.stroke();
+    },
+  },
+
+  zener: {
+    label: 'Zener Diode',
+    labelParams: ['zenerVoltage'],
+    terminals: [
+      { x: -1, y: 0 },
+      { x: 1, y: 0 },
+    ],
+    bodyExtentGrid: { minX: -1, maxX: 1, minY: -0.35, maxY: 0.35 },
+    params: [
+      { key: 'zenerVoltage', label: 'Zener voltage (Vz)', unit: 'V', default: 5.1, min: 0.1 },
+      { key: 'saturationCurrent', label: 'Sat. Current (Is)', unit: 'A', default: 1e-14, min: 1e-18 },
+      { key: 'n', label: 'Ideality (n)', unit: '', default: 1, min: 0.5 },
+    ],
+    draw(ctx) {
+      const g = GRID_SIZE;
+      ctx.strokeStyle = '#e8e8ea';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-g, 0);
+      ctx.lineTo(-0.3 * g, 0);
+      ctx.moveTo(0.3 * g, 0);
+      ctx.lineTo(g, 0);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-0.3 * g, -0.3 * g);
+      ctx.lineTo(-0.3 * g, 0.3 * g);
+      ctx.lineTo(0.3 * g, 0);
+      ctx.closePath();
+      ctx.stroke();
+      // Bent cathode bar: the "Z" that distinguishes a zener.
+      ctx.beginPath();
+      ctx.moveTo(0.15 * g, -0.3 * g);
+      ctx.lineTo(0.3 * g, -0.3 * g);
+      ctx.lineTo(0.3 * g, 0.3 * g);
+      ctx.lineTo(0.45 * g, 0.3 * g);
+      ctx.stroke();
+    },
+  },
+
+  vcvs: {
+    label: 'VCVS (V-controlled V)',
+    terminals: [
+      { x: 1, y: -1 }, // out+
+      { x: 1, y: 1 }, // out-
+      { x: -1, y: -1 }, // ctrl+
+      { x: -1, y: 1 }, // ctrl-
+    ],
+    bodyExtentGrid: { minX: -1, maxX: 1, minY: -1, maxY: 1 },
+    params: [{ key: 'gain', label: 'Gain', unit: 'V/V', default: 2, min: -1e6 }],
+    draw(ctx) {
+      drawControlledSource(ctx, 'vs');
+    },
+  },
+
+  vccs: {
+    label: 'VCCS (V-controlled I)',
+    terminals: [
+      { x: 1, y: -1 }, // out+
+      { x: 1, y: 1 }, // out-
+      { x: -1, y: -1 }, // ctrl+
+      { x: -1, y: 1 }, // ctrl-
+    ],
+    bodyExtentGrid: { minX: -1, maxX: 1, minY: -1, maxY: 1 },
+    params: [{ key: 'transconductance', label: 'Transconductance', unit: 'S', default: 1e-3, min: -1e6 }],
+    draw(ctx) {
+      drawControlledSource(ctx, 'is');
+    },
+  },
+
+  transformer: {
+    label: 'Transformer (ideal)',
+    terminals: [
+      { x: -1, y: -1 }, // primary +
+      { x: -1, y: 1 }, // primary -
+      { x: 1, y: -1 }, // secondary +
+      { x: 1, y: 1 }, // secondary -
+    ],
+    bodyExtentGrid: { minX: -1, maxX: 1, minY: -1, maxY: 1 },
+    params: [{ key: 'ratio', label: 'Turns ratio (Ns/Np)', unit: '', default: 2, min: 1e-3 }],
+    draw(ctx) {
+      const g = GRID_SIZE;
+      ctx.strokeStyle = '#e8e8ea';
+      ctx.lineWidth = 2;
+      // Lead wires from each terminal to its coil.
+      ctx.beginPath();
+      for (const [x, y] of [
+        [-1, -1],
+        [1, -1],
+      ]) {
+        ctx.moveTo(x * g, y * g);
+        ctx.lineTo(x * 0.45 * g, y * g);
+        ctx.lineTo(x * 0.45 * g, y * 0.6 * g);
+      }
+      for (const [x, y] of [
+        [-1, 1],
+        [1, 1],
+      ]) {
+        ctx.moveTo(x * g, y * g);
+        ctx.lineTo(x * 0.45 * g, y * g);
+        ctx.lineTo(x * 0.45 * g, y * 0.6 * g);
+      }
+      ctx.stroke();
+      // Two coils of bumps (left = primary, right = secondary) either side of the core.
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        for (let i = 0; i < 3; i++) {
+          const cy = (-0.6 + 0.4 * i + 0.2) * g;
+          ctx.arc(side * 0.45 * g, cy, 0.2 * g, -Math.PI / 2, Math.PI / 2, side < 0);
+        }
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.moveTo(-0.1 * g, -0.6 * g);
+      ctx.lineTo(-0.1 * g, 0.6 * g);
+      ctx.moveTo(0.1 * g, -0.6 * g);
+      ctx.lineTo(0.1 * g, 0.6 * g);
       ctx.stroke();
     },
   },

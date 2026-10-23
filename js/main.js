@@ -10,6 +10,8 @@ import {
   moveComponent,
   rotateComponent,
   findComponent,
+  copyComponent,
+  pasteComponent,
 } from './editor/Schematic.js';
 import { pixelToGrid, snapToGrid } from './editor/Geometry.js';
 import { drawScene } from './editor/CanvasRenderer.js';
@@ -25,6 +27,8 @@ import { toggleVoltageProbe, toggleCurrentProbe } from './sim/ProbeManager.js';
 import { drawScope } from './sim/Scope.js';
 import { runACFromSchematic } from './sim/RunAC.js';
 import { drawBode } from './sim/Bode.js';
+import { createHistory, takeSnapshot, recordChange, undo, redo, canUndo, canRedo } from './editor/History.js';
+import { examples, buildExample } from './io/Examples.js';
 import { exportSchematicToFile, importSchematicFromFile } from './io/SchematicIO.js';
 
 const ORIGIN_PX = { x: 40, y: 40 };
@@ -41,6 +45,8 @@ const state = {
   probes: [],
   scrubIndex: 0,
   playing: false,
+  history: createHistory(),
+  clipboard: null, // { type, rotation, params } from the last copy/cut
 };
 
 const canvas = document.getElementById('schematic-canvas');
@@ -55,6 +61,8 @@ const statusEl = document.getElementById('status');
 const probeBtn = document.getElementById('probe-btn');
 const scrubSlider = document.getElementById('scrub-slider');
 const timeReadout = document.getElementById('time-readout');
+const undoBtn = document.getElementById('undo-btn');
+const redoBtn = document.getElementById('redo-btn');
 
 function setStatus(message, isError = false) {
   statusEl.textContent = message;
@@ -76,6 +84,69 @@ function invalidateRun() {
   timeReadout.textContent = '–';
 }
 
+// Runs a schematic mutation and records it as one undo step (if it changed
+// anything). `key` merges rapid repeated edits, e.g. typing in a field.
+function mutate(fn, key = null) {
+  const before = takeSnapshot(state.schematic);
+  const result = fn();
+  recordChange(state.history, before, state.schematic, { key });
+  return result;
+}
+
+// After the schematic is swapped out (undo/redo/import/clear), anything that
+// points into the old one must be dropped.
+function resetTransientState() {
+  if (state.selection?.kind === 'component' && !findComponent(state.schematic, state.selection.id)) {
+    state.selection = null;
+  }
+  if (state.selection?.kind === 'wire' && !state.schematic.wires.some((w) => w.id === state.selection.id)) {
+    state.selection = null;
+  }
+  state.pendingWire = null;
+  state.dragging = null;
+  invalidateRun();
+}
+
+function applyHistoryStep(step) {
+  const restored = step(state.history, state.schematic);
+  if (!restored) return;
+  state.schematic = restored;
+  resetTransientState();
+  render();
+}
+
+function deleteSelection() {
+  if (!state.selection) return;
+  mutate(() => {
+    if (state.selection.kind === 'component') {
+      removeComponent(state.schematic, state.selection.id);
+    } else if (state.selection.kind === 'wire') {
+      removeWire(state.schematic, state.selection.id);
+    }
+  });
+  state.selection = null;
+  invalidateRun();
+  render();
+}
+
+function copySelection() {
+  if (state.selection?.kind !== 'component') return false;
+  state.clipboard = copyComponent(state.schematic, state.selection.id);
+  return true;
+}
+
+function pasteClipboard() {
+  if (!state.clipboard) return;
+  const base = state.selection?.kind === 'component' ? findComponent(state.schematic, state.selection.id) : null;
+  // Paste diagonally offset from the selection (the original, or the previous
+  // paste since each paste becomes the selection) so copies never stack.
+  const anchor = base ?? { x: 4, y: 4 };
+  const id = mutate(() => pasteComponent(state.schematic, state.clipboard, anchor.x + 2, anchor.y + 2));
+  state.selection = { kind: 'component', id };
+  invalidateRun();
+  render();
+}
+
 function render() {
   // Probes reference a componentId directly; once that component is gone
   // (deleted, or the schematic was cleared) the probe is meaningless.
@@ -83,10 +154,18 @@ function render() {
   drawScene(ctx, canvas, state, catalog, ORIGIN_PX);
   drawScope(scopeCtx, scopeCanvas, state);
   drawBode(bodeCtx, bodeCanvas, state);
-  renderProperties(propertiesEl, state, catalog, () => {
-    invalidateRun();
-    render();
-  });
+  renderProperties(
+    propertiesEl,
+    state,
+    catalog,
+    () => {
+      invalidateRun();
+      render();
+    },
+    mutate
+  );
+  undoBtn.disabled = !canUndo(state.history);
+  redoBtn.disabled = !canRedo(state.history);
 
   if (state.runResult?.kind === 'transient') {
     const idx = Math.floor(state.scrubIndex);
@@ -100,7 +179,7 @@ function render() {
 }
 
 renderPalette(paletteEl, catalog);
-setupDragDrop(canvas, state, catalog, { addComponent }, ORIGIN_PX, () => {
+setupDragDrop(canvas, state, catalog, { addComponent: (...args) => mutate(() => addComponent(...args)) }, ORIGIN_PX, () => {
   invalidateRun();
   render();
 });
@@ -133,7 +212,7 @@ canvas.addEventListener('mousedown', (e) => {
 
   const hitTerminal = findTerminalNear(state.schematic, catalog, px, py, ORIGIN_PX);
   if (hitTerminal) {
-    startOrFinishWire(state, hitTerminal);
+    mutate(() => startOrFinishWire(state, hitTerminal));
     invalidateRun();
     render();
     return;
@@ -145,6 +224,7 @@ canvas.addEventListener('mousedown', (e) => {
     state.selection = { kind: 'component', id: hitComponentId };
     const comp = findComponent(state.schematic, hitComponentId);
     state.dragging = {
+      before: takeSnapshot(state.schematic),
       componentId: hitComponentId,
       grabDx: grid.x - comp.x,
       grabDy: grid.y - comp.y,
@@ -182,12 +262,49 @@ canvas.addEventListener('mousemove', (e) => {
 
 window.addEventListener('mouseup', () => {
   if (state.dragging) {
+    // A click without movement leaves the schematic unchanged, so records nothing.
+    recordChange(state.history, state.dragging.before, state.schematic);
     state.dragging = null;
     render();
   }
 });
 
 window.addEventListener('keydown', (e) => {
+  // Don't hijack keys while typing in a parameter field, etc. (Backspace there
+  // must edit the number, not delete the selected component.)
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+
+  const mod = e.metaKey || e.ctrlKey;
+  if (mod) {
+    const key = e.key.toLowerCase();
+    if (key === 'z') {
+      e.preventDefault();
+      applyHistoryStep(e.shiftKey ? redo : undo);
+    } else if (key === 'y') {
+      e.preventDefault();
+      applyHistoryStep(redo);
+    } else if (key === 'c') {
+      if (copySelection()) e.preventDefault();
+    } else if (key === 'x') {
+      if (copySelection()) {
+        e.preventDefault();
+        deleteSelection();
+      }
+    } else if (key === 'v') {
+      if (state.clipboard) {
+        e.preventDefault();
+        pasteClipboard();
+      }
+    } else if (key === 'd') {
+      // Duplicate = copy + paste in one go.
+      if (copySelection()) {
+        e.preventDefault();
+        pasteClipboard();
+      }
+    }
+    return;
+  }
+
   if (e.key === 'Escape') {
     cancelPendingWire(state);
     state.selection = null;
@@ -199,7 +316,7 @@ window.addEventListener('keydown', (e) => {
 
   if (e.key === 'r' || e.key === 'R') {
     if (state.selection.kind === 'component') {
-      rotateComponent(state.schematic, state.selection.id);
+      mutate(() => rotateComponent(state.schematic, state.selection.id));
       invalidateRun();
       render();
     }
@@ -207,14 +324,7 @@ window.addEventListener('keydown', (e) => {
   }
 
   if (e.key === 'Delete' || e.key === 'Backspace') {
-    if (state.selection.kind === 'component') {
-      removeComponent(state.schematic, state.selection.id);
-    } else if (state.selection.kind === 'wire') {
-      removeWire(state.schematic, state.selection.id);
-    }
-    state.selection = null;
-    invalidateRun();
-    render();
+    deleteSelection();
   }
 });
 
@@ -294,12 +404,65 @@ scrubSlider.addEventListener('input', () => {
 });
 
 document.getElementById('clear-btn').addEventListener('click', () => {
-  state.schematic = createSchematic();
+  mutate(() => {
+    state.schematic = createSchematic();
+  });
   state.selection = null;
   state.pendingWire = null;
   invalidateRun();
   setStatus('');
   render();
+});
+
+undoBtn.addEventListener('click', () => applyHistoryStep(undo));
+redoBtn.addEventListener('click', () => applyHistoryStep(redo));
+
+const exampleSelect = document.getElementById('example-select');
+for (const ex of examples) {
+  const opt = document.createElement('option');
+  opt.value = ex.id;
+  opt.textContent = ex.name;
+  opt.title = ex.description;
+  exampleSelect.appendChild(opt);
+}
+
+const RUN_BUTTON_FOR = { dc: 'run-btn', transient: 'run-transient-btn', ac: 'run-ac-btn' };
+
+// Replaces the schematic with an example (undoable), applies its probes and
+// suggested sweep settings, then runs that analysis so results show at once.
+exampleSelect.addEventListener('change', () => {
+  const example = examples.find((ex) => ex.id === exampleSelect.value);
+  exampleSelect.value = '';
+  if (!example) return;
+
+  const { schematic, probes } = buildExample(example);
+  mutate(() => {
+    state.schematic = schematic;
+  });
+  state.selection = null;
+  state.pendingWire = null;
+  state.probes = [];
+  for (const p of probes) {
+    const comp = findComponent(state.schematic, p.componentId);
+    toggleVoltageProbe(state, p.componentId, p.terminalIndex, `${p.label} (${catalog[comp.type].label})`);
+  }
+  invalidateRun();
+
+  const a = example.analysis;
+  if (a.kind === 'transient') {
+    document.getElementById('tstop-input').value = a.tStop;
+    document.getElementById('dt-input').value = a.dt;
+  } else if (a.kind === 'ac') {
+    document.getElementById('fstart-input').value = a.fStart;
+    document.getElementById('fstop-input').value = a.fStop;
+    document.getElementById('fpoints-input').value = a.points;
+    document.getElementById('fsweep-input').value = a.sweep;
+  }
+  render();
+  document.getElementById(RUN_BUTTON_FOR[a.kind]).click();
+  if (!statusEl.classList.contains('status-error')) {
+    setStatus(`${example.name}: ${example.description} ${statusEl.textContent}`);
+  }
 });
 
 document.getElementById('export-btn').addEventListener('click', () => {
@@ -313,7 +476,9 @@ importInput.addEventListener('change', async () => {
   if (!file) return;
   try {
     const data = await importSchematicFromFile(file);
-    state.schematic = data;
+    mutate(() => {
+      state.schematic = data;
+    });
     state.selection = null;
     state.pendingWire = null;
     invalidateRun();

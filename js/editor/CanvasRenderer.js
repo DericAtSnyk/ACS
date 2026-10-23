@@ -73,7 +73,9 @@ function drawSelectionBox(ctx, comp, def, originPx) {
 
 function drawParamLabel(ctx, comp, def, bbox, originPx) {
   if (def.params.length === 0) return;
-  const text = def.params.map((p) => `${formatSI(comp.params[p.key])}${p.unit}`).join(', ');
+  // Devices with many parameters can list just the headline ones via labelParams.
+  const shown = def.labelParams ? def.params.filter((p) => def.labelParams.includes(p.key)) : def.params;
+  const text = shown.map((p) => `${formatSI(comp.params[p.key])}${p.unit}`).join(', ');
   ctx.font = '11px system-ui';
   ctx.fillStyle = '#c8c8d0';
   ctx.textAlign = 'center';
@@ -120,7 +122,11 @@ function wireCurrent(runResult, wire, stepIdx) {
 }
 
 export function drawScene(ctx, canvas, state, catalog, originPx) {
-  const { schematic, runResult } = state;
+  const { schematic } = state;
+  // An AC sweep has no single set of node voltages/currents to label on the
+  // schematic (its results live on the Bode plot), so only DC and transient
+  // runs annotate the canvas.
+  const runResult = state.runResult?.kind === 'ac' ? null : state.runResult;
   const stepIdx = currentStepIndex(runResult, state);
   drawGrid(ctx, canvas, originPx);
 

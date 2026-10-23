@@ -23,7 +23,12 @@
       <div class="toolbar">
         <button id="run-btn">Run DC</button>
         <button id="probe-btn">Probe</button>
+        <button id="undo-btn" title="Undo (Ctrl/Cmd+Z)" disabled>Undo</button>
+        <button id="redo-btn" title="Redo (Ctrl/Cmd+Shift+Z)" disabled>Redo</button>
         <button id="clear-btn">Clear</button>
+        <select id="example-select" title="Load an example circuit and run it">
+          <option value="">Load example…</option>
+        </select>
         <button id="export-btn">Export JSON</button>
         <button id="import-btn">Import JSON</button>
         <input id="import-file" type="file" accept="application/json" hidden />
@@ -66,7 +71,9 @@
       <p class="hint">
         Drag parts from the palette onto the grid. Click a terminal (blue dot) to start a wire,
         click another terminal to finish it. Click a component's body to select or drag it.
-        With a component selected: <kbd>R</kbd> rotates, <kbd>Delete</kbd> removes it.
+        With a component selected: <kbd>R</kbd> rotates, <kbd>Delete</kbd> removes it,
+        <kbd>Ctrl/Cmd</kbd>+<kbd>C</kbd>/<kbd>X</kbd>/<kbd>V</kbd>/<kbd>D</kbd> copy, cut, paste, duplicate.
+        <kbd>Ctrl/Cmd</kbd>+<kbd>Z</kbd> undoes, <kbd>Shift</kbd>+<kbd>Z</kbd> (or <kbd>Y</kbd>) redoes.
         Toggle <strong>Probe</strong>, then click a terminal to watch its voltage or a component
         body to watch its current — traces appear on the scope below once you run a transient.
         An <strong>AC Voltage Source</strong>'s Amplitude/Phase double as the AC sweep's

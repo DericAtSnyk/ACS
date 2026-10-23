@@ -42,6 +42,17 @@ npm test
 - **Probe a signal**: toggle **Probe**, then click a terminal to watch its
   voltage or a component's body to watch its current — traces appear on the
   oscilloscope panel below the schematic once you run a transient.
+- **Undo / redo**: the **Undo** / **Redo** buttons, or `Ctrl/Cmd+Z` and
+  `Ctrl/Cmd+Shift+Z` (or `Ctrl/Cmd+Y`). Placing, wiring, moving, rotating,
+  deleting, editing a parameter, clearing, and importing are all undoable
+  (up to 100 steps).
+- **Copy / paste**: select a component, then `Ctrl/Cmd+C` / `X` / `V` copy,
+  cut and paste it (offset diagonally from the selection); `Ctrl/Cmd+D`
+  duplicates in one step.
+- **Load an example**: the **Load example…** dropdown replaces the schematic
+  with a ready-made circuit (divider, RC and RLC filters, rectifier, zener
+  clipper, op-amp amplifier, BJT switch, transformer), sets up its probes and
+  sweep settings, and runs it. Loading is undoable.
 - **Save / load a circuit**: **Export JSON** downloads the current
   schematic; **Import JSON** loads one back in.
 - **Run an AC sweep (Bode plot)**: set a start/stop frequency, point count,
@@ -57,12 +68,16 @@ npm test
 |---|---|
 | Resistor, Capacitor, Inductor | Linear; L/C use trapezoidal-integration companion models for transient analysis |
 | DC Voltage/Current Source | Independent sources |
-| AC Voltage Source | Sinusoidal, transient-only |
+| AC Voltage Source | Sinusoidal; its amplitude/phase are also the AC sweep stimulus |
+| Pulse Voltage Source | Periodic trapezoidal pulse (low/high level, delay, rise, fall, width, period); transient-only, no AC component |
 | Diode | Shockley equation |
+| Zener Diode | Shockley forward junction plus an exponential reverse-breakdown branch at `Vz` (≈1 mA) |
 | Switch | Opens/closes at a configurable time |
 | Op-Amp | Ideal (infinite gain, no saturation) |
 | BJT (NPN) | Simplified large-signal Ebers-Moll model |
 | NMOS | Level-1 (Shichman-Hodges) model |
+| VCVS / VCCS | Linear voltage-controlled voltage / current sources (gain, transconductance) |
+| Transformer | Ideal (turns ratio only): no magnetizing inductance, leakage, or saturation; passes DC |
 | Ground | Reference node (0V) |
 
 ## How it works
@@ -87,10 +102,10 @@ npm test
 index.html, css/style.css     Page shell and styling
 js/core/                      Circuit model, linear algebra, MNA solver, transient driver, AC sweep
 js/components/                Component catalog (UI/symbols) and device stamps (solver math)
-js/editor/                    Canvas rendering, drag-and-drop, wiring, selection, properties panel
+js/editor/                    Canvas rendering, drag-and-drop, wiring, selection, properties panel, undo/redo history
 js/sim/                       DC/transient/AC run bridges, playback, probes, oscilloscope, Bode plot, current-flow overlay
-js/io/                        JSON schematic export/import
-test/                         node:test suite verifying solver output against analytical results
+js/io/                        JSON schematic export/import, built-in example circuits
+test/                         node:test suite (solver, devices, history, examples) verifying solver output against analytical results
 server.js                     Zero-dependency static file server
 ```
 
