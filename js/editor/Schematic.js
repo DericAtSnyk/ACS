@@ -57,3 +57,16 @@ export function rotateComponent(schematic, componentId) {
   const c = findComponent(schematic, componentId);
   if (c) c.rotation = (c.rotation + 90) % 360;
 }
+
+// Copy/paste works on a detached description of one component (type,
+// rotation, params) — not its id or position — so it can be pasted any
+// number of times, including after the original was deleted.
+export function copyComponent(schematic, componentId) {
+  const c = findComponent(schematic, componentId);
+  if (!c) return null;
+  return { type: c.type, rotation: c.rotation, params: { ...c.params } };
+}
+
+export function pasteComponent(schematic, clip, gridX, gridY) {
+  return addComponent(schematic, clip.type, gridX, gridY, clip.rotation, clip.params);
+}

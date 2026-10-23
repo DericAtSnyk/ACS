@@ -11,6 +11,11 @@ import toggleSwitch from './devices/switch.js';
 import opamp from './devices/opamp.js';
 import bjt from './devices/bjt.js';
 import mosfet from './devices/mosfet.js';
+import vsourcePulse from './devices/vsourcePulse.js';
+import zener from './devices/zener.js';
+import vcvs from './devices/vcvs.js';
+import vccs from './devices/vccs.js';
+import transformer from './devices/transformer.js';
 
 export const deviceDefs = {
   resistor,
@@ -24,4 +29,9 @@ export const deviceDefs = {
   opamp,
   bjt_npn: bjt,
   nmos: mosfet,
+  vsource_pulse: vsourcePulse,
+  zener,
+  vcvs,
+  vccs,
+  transformer,
 };

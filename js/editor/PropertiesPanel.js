@@ -1,7 +1,9 @@
 // Editable form for the selected component's parameters, plus rotate/delete.
 import { rotateComponent, removeComponent } from './Schematic.js';
 
-export function renderProperties(container, state, catalog, onChange) {
+// `mutate(fn, key)` runs a schematic edit as an undoable step (see main.js);
+// `key` merges repeated edits to one field into a single step.
+export function renderProperties(container, state, catalog, onChange, mutate = (fn) => fn()) {
   container.innerHTML = '';
   const sel = state.selection;
 
@@ -44,7 +46,9 @@ export function renderProperties(container, state, catalog, onChange) {
     input.addEventListener('input', () => {
       const v = parseFloat(input.value);
       if (!Number.isNaN(v)) {
-        comp.params[paramDef.key] = v;
+        mutate(() => {
+          comp.params[paramDef.key] = v;
+        }, `param:${comp.id}:${paramDef.key}`);
         onChange();
       }
     });
@@ -58,7 +62,7 @@ export function renderProperties(container, state, catalog, onChange) {
   const rotateBtn = document.createElement('button');
   rotateBtn.textContent = 'Rotate 90°';
   rotateBtn.addEventListener('click', () => {
-    rotateComponent(state.schematic, comp.id);
+    mutate(() => rotateComponent(state.schematic, comp.id));
     onChange();
   });
   actions.appendChild(rotateBtn);
@@ -67,7 +71,7 @@ export function renderProperties(container, state, catalog, onChange) {
   deleteBtn.textContent = 'Delete';
   deleteBtn.className = 'danger';
   deleteBtn.addEventListener('click', () => {
-    removeComponent(state.schematic, comp.id);
+    mutate(() => removeComponent(state.schematic, comp.id));
     state.selection = null;
     onChange();
   });
